@@ -8,3 +8,17 @@ import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
 
 String greet({required String name}) =>
     RustLib.instance.api.crateApiSimpleGreet(name: name);
+
+int calculatePower({required int base, required int exponent}) => RustLib
+    .instance
+    .api
+    .crateApiSimpleCalculatePower(base: base, exponent: exponent);
+
+PlatformInt64 calculateFibonacci({required int n}) =>
+    RustLib.instance.api.crateApiSimpleCalculateFibonacci(n: n);
+
+Int32List sortLargeArray({required int size}) =>
+    RustLib.instance.api.crateApiSimpleSortLargeArray(size: size);
+
+List<Int32List> matrixMultiplication({required int size}) =>
+    RustLib.instance.api.crateApiSimpleMatrixMultiplication(size: size);
