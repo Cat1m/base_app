@@ -184,3 +184,24 @@ void someFunction() {
 3. Handle errors appropriately cả hai phía
 4. Đặt tên function và types rõ ràng, dễ hiểu
 5. Comment code khi logic phức tạp
+
+# 1. Clone repo base_app và đổi tên thành food_app
+git clone https://github.com/Cat1m/base_app.git food_app
+
+# 2. Di chuyển vào thư mục dự án mới
+cd food_app
+
+# 3. Cài đặt và active package rename
+flutter pub global activate rename
+
+# 4. Tạo và chạy script đổi tên dự án
+python rename_project.py food_app
+
+# 5. Hoàn tất thiết lập
+flutter clean
+flutter pub get
+# (Nếu phát triển cho iOS)
+cd ios && pod install && cd ..
+
+# 6. Chạy ứng dụng để kiểm tra
+flutter run
