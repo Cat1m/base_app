@@ -146,24 +146,37 @@ class ImageController {
         sourcePath: sourceImage.file.path,
         uiSettings: [
           AndroidUiSettings(
-            toolbarTitle: 'Chỉnh sửa ảnh',
-            toolbarColor: Theme.of(context).primaryColor,
+            toolbarTitle: 'Cắt ảnh',
+            toolbarColor: Colors.purpleAccent,
             toolbarWidgetColor: Colors.white,
-            activeControlsWidgetColor: Theme.of(context).primaryColor,
+            statusBarColor: Colors.purpleAccent, // Thêm màu cho status bar
+            backgroundColor: Colors.white, // Thêm màu nền
+            activeControlsWidgetColor: Colors.purpleAccent, // Màu nút hoạt động
             initAspectRatio: CropAspectRatioPreset.original,
             lockAspectRatio: false,
+            // Thiết lập hiển thị kiểm soát ở cuối màn hình
             hideBottomControls: false,
+            // Thêm danh sách các preset vào đây
+            aspectRatioPresets: [
+              CropAspectRatioPreset.square,
+              CropAspectRatioPreset.ratio3x2,
+              CropAspectRatioPreset.original,
+              CropAspectRatioPreset.ratio4x3,
+              CropAspectRatioPreset.ratio16x9,
+            ],
           ),
           IOSUiSettings(
-            title: 'Chỉnh sửa ảnh',
-            doneButtonTitle: 'Xong',
-            cancelButtonTitle: 'Hủy',
-            rotateButtonsHidden: false,
-            rotateClockwiseButtonHidden: false,
-            aspectRatioLockEnabled: false,
+            title: 'Cắt ảnh',
+            // Thêm danh sách các preset cho iOS
+            aspectRatioPresets: [
+              CropAspectRatioPreset.square,
+              CropAspectRatioPreset.ratio3x2,
+              CropAspectRatioPreset.original,
+              CropAspectRatioPreset.ratio4x3,
+              CropAspectRatioPreset.ratio16x9,
+            ],
           ),
         ],
-        compressQuality: 90,
       );
 
       if (croppedFile == null) {
