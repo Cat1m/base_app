@@ -1,9 +1,12 @@
-import 'package:base_app/src/features/media/helpers/notification_handler.dart';
-import 'package:base_app/src/features/media/media.dart';
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:logging/logging.dart';
 import 'package:permission_handler/permission_handler.dart';
-import 'package:image_picker/image_picker.dart';
+
+import '../controllers/image_controller.dart';
+import '../helpers/notification_handler.dart';
+import '../models/image_item.dart';
+import '../widgets/image_preview.dart';
 
 class MediaScreen extends StatefulWidget {
   const MediaScreen({super.key});
@@ -178,11 +181,12 @@ class _MediaScreenState extends State<MediaScreen> {
           child: Stack(
             fit: StackFit.expand,
             children: [
-              // Media preview
+              // Media preview with crop button
               ImagePreview(
                 imageItem: _selectedImages[index],
                 borderRadius: BorderRadius.circular(0),
                 fit: BoxFit.cover,
+                onCropPressed: () => _cropImage(index),
               ),
 
               // Delete button
@@ -275,6 +279,38 @@ class _MediaScreenState extends State<MediaScreen> {
 
         // Cập nhật trạng thái nút sau khi thao tác
         _updateButtonStates();
+      }
+    }
+  }
+
+  // Phương thức xử lý cắt ảnh
+  Future<void> _cropImage(int index) async {
+    if (index < 0 || index >= _selectedImages.length) return;
+
+    try {
+      setState(() {
+        _isLoading = true;
+      });
+
+      final imageItem = _selectedImages[index];
+      final croppedImageItem = await _imageController.cropImage(
+        context,
+        imageItem,
+      );
+
+      if (croppedImageItem != null && mounted) {
+        setState(() {
+          // Thay thế ảnh cũ bằng ảnh đã cắt
+          _selectedImages[index] = croppedImageItem;
+        });
+      }
+    } catch (e) {
+      // Lỗi sẽ được xử lý trong ImageController
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
       }
     }
   }

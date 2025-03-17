@@ -1,11 +1,11 @@
-// Enum cho các loại thông báo
 import 'package:flutter/material.dart';
 import 'package:logging/logging.dart';
 import 'package:permission_handler/permission_handler.dart';
 
+// Enum cho các loại thông báo
 enum NotificationType { error, success, permission }
 
-// Handler thông báo thông minh tập trung vào trải nghiệm người dùng
+/// Handler thông báo thông minh tập trung vào trải nghiệm người dùng
 class SmartNotificationHandler {
   final BuildContext context;
   final Logger _logger = Logger('SmartNotificationHandler');

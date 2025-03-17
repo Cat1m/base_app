@@ -1,16 +1,35 @@
-import 'dart:io';
-
-import 'package:base_app/src/features/media/helpers/notification_handler.dart';
-import 'package:base_app/src/features/media/media.dart';
-
 import 'package:flutter/material.dart';
-import 'package:image_picker/image_picker.dart';
 import 'package:logging/logging.dart';
 import 'package:permission_handler/permission_handler.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:image_cropper/image_cropper.dart';
+import 'dart:io';
 
+import '../helpers/notification_handler.dart';
+import '../models/image_item.dart';
+
+/// Lớp tùy chọn cho việc chọn ảnh
+class ImageOptions {
+  final ImageSource source;
+  final bool allowMultiple;
+  final int? imageQuality;
+  final double? maxWidth;
+  final double? maxHeight;
+
+  const ImageOptions({
+    required this.source,
+    this.allowMultiple = false,
+    this.imageQuality,
+    this.maxWidth,
+    this.maxHeight,
+  });
+}
+
+/// Controller để quản lý việc chọn ảnh và cắt ảnh
 class ImageController {
   final SmartNotificationHandler notificationHandler;
   final ImagePicker _picker = ImagePicker();
+  final ImageCropper _cropper = ImageCropper();
   final Logger _logger = Logger('ImageController');
 
   ImageController({required this.notificationHandler});
@@ -116,21 +135,63 @@ class ImageController {
       return [];
     }
   }
-}
 
-// Lớp tùy chọn cho việc chọn ảnh
-class ImageOptions {
-  final ImageSource source;
-  final bool allowMultiple;
-  final int? imageQuality;
-  final double? maxWidth;
-  final double? maxHeight;
+  /// Phương thức mới để cắt ảnh
+  Future<ImageItem?> cropImage(
+    BuildContext context,
+    ImageItem sourceImage,
+  ) async {
+    try {
+      CroppedFile? croppedFile = await _cropper.cropImage(
+        sourcePath: sourceImage.file.path,
+        uiSettings: [
+          AndroidUiSettings(
+            toolbarTitle: 'Chỉnh sửa ảnh',
+            toolbarColor: Theme.of(context).primaryColor,
+            toolbarWidgetColor: Colors.white,
+            activeControlsWidgetColor: Theme.of(context).primaryColor,
+            initAspectRatio: CropAspectRatioPreset.original,
+            lockAspectRatio: false,
+            hideBottomControls: false,
+          ),
+          IOSUiSettings(
+            title: 'Chỉnh sửa ảnh',
+            doneButtonTitle: 'Xong',
+            cancelButtonTitle: 'Hủy',
+            rotateButtonsHidden: false,
+            rotateClockwiseButtonHidden: false,
+            aspectRatioLockEnabled: false,
+          ),
+        ],
+        compressQuality: 90,
+      );
 
-  const ImageOptions({
-    required this.source,
-    this.allowMultiple = false,
-    this.imageQuality,
-    this.maxWidth,
-    this.maxHeight,
-  });
+      if (croppedFile == null) {
+        _logger.info('Người dùng đã hủy việc cắt ảnh');
+        return null;
+      }
+
+      // Tạo ImageItem mới từ ảnh đã cắt
+      final croppedImageItem = ImageItem(
+        file: File(croppedFile.path),
+        path: croppedFile.path,
+        name: sourceImage.name,
+      );
+
+      notificationHandler.handleNotification(
+        NotificationType.success,
+        'Đã chỉnh sửa ảnh thành công',
+      );
+
+      return croppedImageItem;
+    } catch (e) {
+      _logger.severe('Lỗi khi cắt ảnh: $e');
+      notificationHandler.handleNotification(
+        NotificationType.error,
+        'Đã xảy ra lỗi khi chỉnh sửa ảnh: ${e.toString()}',
+        data: e,
+      );
+      return null;
+    }
+  }
 }

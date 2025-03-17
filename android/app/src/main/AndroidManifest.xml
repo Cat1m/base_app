@@ -11,8 +11,7 @@
     <application
         android:label="base_app"
         android:name="${applicationName}"
-        android:icon="@mipmap/ic_launcher"
-        android:largeHeap="true">
+        android:icon="@mipmap/ic_launcher">
         <activity
             android:name=".MainActivity"
             android:exported="true"
@@ -43,7 +42,7 @@
         <activity
             android:name="com.yalantis.ucrop.UCropActivity"
             android:screenOrientation="portrait"
-            android:theme="@style/Ucrop.CropTheme"/>
+            android:theme="@style/Theme.AppCompat.Light.NoActionBar"/>
 
         <meta-data
         android:name="io.flutter.embedding.android.EnableImpeller"
