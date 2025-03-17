@@ -1,5 +1,5 @@
 import 'package:base_app/src/features/home/screens/caro_game_screen.dart';
-import 'package:base_app/src/features/media/screen/media_screen.dart';
+import 'package:base_app/src/features/media/screens/media_screen.dart';
 import 'package:base_app/src/features/performance/screens/performance_screen.dart';
 import 'package:flutter/material.dart';
 

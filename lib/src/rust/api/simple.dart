@@ -6,6 +6,8 @@
 import '../frb_generated.dart';
 import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
 
+// These function are ignored because they are on traits that is not defined in current crate (put an empty `#[frb]` on it to unignore): `clone`, `fmt`
+
 String greet({required String name}) =>
     RustLib.instance.api.crateApiSimpleGreet(name: name);
 
@@ -13,6 +15,17 @@ int calculatePower({required int base, required int exponent}) => RustLib
     .instance
     .api
     .crateApiSimpleCalculatePower(base: base, exponent: exponent);
+
+BenchmarkResult benchmarkFibonacci({required int n}) =>
+    RustLib.instance.api.crateApiSimpleBenchmarkFibonacci(n: n);
+
+BenchmarkResult benchmarkSorting({required int size}) =>
+    RustLib.instance.api.crateApiSimpleBenchmarkSorting(size: size);
+
+BenchmarkResult benchmarkMatrixMultiplication({required int size}) => RustLib
+    .instance
+    .api
+    .crateApiSimpleBenchmarkMatrixMultiplication(size: size);
 
 PlatformInt64 calculateFibonacci({required int n}) =>
     RustLib.instance.api.crateApiSimpleCalculateFibonacci(n: n);
@@ -22,3 +35,21 @@ Int32List sortLargeArray({required int size}) =>
 
 List<Int32List> matrixMultiplication({required int size}) =>
     RustLib.instance.api.crateApiSimpleMatrixMultiplication(size: size);
+
+class BenchmarkResult {
+  final double executionTimeMs;
+  final String summary;
+
+  const BenchmarkResult({required this.executionTimeMs, required this.summary});
+
+  @override
+  int get hashCode => executionTimeMs.hashCode ^ summary.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is BenchmarkResult &&
+          runtimeType == other.runtimeType &&
+          executionTimeMs == other.executionTimeMs &&
+          summary == other.summary;
+}

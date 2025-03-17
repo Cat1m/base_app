@@ -193,6 +193,15 @@ class _PerformanceScreenState extends State<PerformanceScreen> {
                         child: const Text('Run Fibonacci'),
                       ),
                     ),
+                    const SizedBox(width: 8),
+                    ElevatedButton(
+                      onPressed: _showDetailedResults,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.teal,
+                        foregroundColor: Colors.white,
+                      ),
+                      child: const Text('Show Detailed Results'),
+                    ),
                   ],
                 ),
 
@@ -465,12 +474,9 @@ class _PerformanceScreenState extends State<PerformanceScreen> {
     });
 
     try {
-      // Rust implementation
-      final rustStart = DateTime.now();
-      final sortedArray = sortLargeArray(size: arrayLength);
-      final rustEnd = DateTime.now();
-      final rustDuration =
-          rustEnd.difference(rustStart).inMicroseconds / 1000.0;
+      // Rust implementation - bây giờ chỉ nhận thời gian
+      final rustBenchmark = benchmarkSorting(size: arrayLength);
+      final rustDuration = rustBenchmark.executionTimeMs;
 
       // Dart implementation
       final dartStart = DateTime.now();
@@ -524,12 +530,9 @@ class _PerformanceScreenState extends State<PerformanceScreen> {
     });
 
     try {
-      // Rust implementation
-      final rustStart = DateTime.now();
-      final rustResult = matrixMultiplication(size: matrixSize);
-      final rustEnd = DateTime.now();
-      final rustDuration =
-          rustEnd.difference(rustStart).inMicroseconds / 1000.0;
+      // Rust implementation - bây giờ chỉ nhận thời gian
+      final rustBenchmark = benchmarkMatrixMultiplication(size: matrixSize);
+      final rustDuration = rustBenchmark.executionTimeMs;
 
       // Dart implementation
       final dartStart = DateTime.now();
@@ -603,31 +606,39 @@ class _PerformanceScreenState extends State<PerformanceScreen> {
     });
 
     try {
-      // Rust implementation
-      final rustStart = DateTime.now();
-      final rustResult = calculateFibonacci(n: n);
-      final rustEnd = DateTime.now();
-      final rustDuration =
-          rustEnd.difference(rustStart).inMicroseconds / 1000.0;
+      // Rust implementation - bây giờ chỉ nhận thời gian
+      final rustBenchmark = benchmarkFibonacci(n: n);
+      final rustDuration = rustBenchmark.executionTimeMs;
 
-      // Dart implementation
+      // Dart implementation - điều chỉnh vòng lặp để khớp với Rust
       final dartStart = DateTime.now();
 
-      int a = 0;
-      int b = 1;
-      for (int i = 2; i <= n; i++) {
-        final temp = a + b;
-        a = b;
-        b = temp;
+      int fibonacci(int n) {
+        if (n <= 1) return n;
+        int a = 0;
+        int b = 1;
+        for (int i = 1; i < n; i++) {
+          final temp = a + b;
+          a = b;
+          b = temp;
+        }
+        return b;
+      }
+
+      // Lặp lại nhiều lần như trong Rust
+      for (int i = 0; i < 10000; i++) {
+        fibonacci(n);
       }
 
       final dartEnd = DateTime.now();
       final dartDuration =
           dartEnd.difference(dartStart).inMicroseconds / 1000.0;
+      // Chia thời gian cho số lần lặp
+      final dartTimePerOp = dartDuration / 10000.0;
 
       setState(() {
         _fibonacciTimeRust = rustDuration;
-        _fibonacciTimeDart = dartDuration;
+        _fibonacciTimeDart = dartTimePerOp;
         _isLoading = false;
       });
     } catch (e) {
@@ -654,4 +665,97 @@ class _PerformanceScreenState extends State<PerformanceScreen> {
       }
     }
   }
+
+  void _showDetailedResults() {
+    if (!_hasAnyResult()) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Run tests first to see results')),
+      );
+      return;
+    }
+
+    showDialog(
+      context: context,
+      builder:
+          (context) => AlertDialog(
+            title: const Text('Detailed Performance Results'),
+            content: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _buildDetailSection(
+                    'Array Sorting',
+                    'Array size: ${_arrayLengthController.text}',
+                    _sortArrayTimeRust,
+                    _sortArrayTimeDart,
+                  ),
+                  const Divider(),
+                  _buildDetailSection(
+                    'Matrix Multiplication',
+                    'Matrix size: ${_matrixSizeController.text}×${_matrixSizeController.text}',
+                    _matrixMultTimeRust,
+                    _matrixMultTimeDart,
+                  ),
+                  const Divider(),
+                  _buildDetailSection(
+                    'Fibonacci Calculation',
+                    'n = ${_fibNumberController.text}',
+                    _fibonacciTimeRust,
+                    _fibonacciTimeDart,
+                  ),
+                ],
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('Close'),
+              ),
+            ],
+          ),
+    );
+  }
+
+  Widget _buildDetailSection(
+    String title,
+    String parameters,
+    double rustTime,
+    double dartTime,
+  ) {
+    final speedup = rustTime > 0 && dartTime > 0 ? dartTime / rustTime : 0;
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            title,
+            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+          ),
+          const SizedBox(height: 4),
+          Text(parameters),
+          const SizedBox(height: 8),
+          Text('Rust: ${rustTime.toStringAsFixed(2)} ms'),
+          Text('Dart: ${dartTime.toStringAsFixed(2)} ms'),
+          const SizedBox(height: 4),
+          Text(
+            'Speedup: ${speedup > 0 ? '${speedup.toStringAsFixed(1)}x' : 'N/A'}',
+            style: TextStyle(
+              fontWeight: FontWeight.bold,
+              color: speedup > 1 ? Colors.green : Colors.red,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class BenchmarkResult {
+  final double executionTimeMs;
+  final String summary;
+
+  BenchmarkResult({required this.executionTimeMs, required this.summary});
 }
