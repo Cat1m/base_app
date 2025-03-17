@@ -1,21 +1,24 @@
 import 'package:flutter/material.dart';
 import 'package:logging/logging.dart';
-import 'package:media_module/media_module.dart';
 import 'package:permission_handler/permission_handler.dart';
+import 'package:image_picker/image_picker.dart';
+import 'dart:io';
+
+// Enum cho các loại thông báo
+enum NotificationType { error, success, permission }
 
 // Handler thông báo thông minh tập trung vào trải nghiệm người dùng
-class SmartMediaNotificationHandler implements MediaNotificationHandler {
+class SmartNotificationHandler {
   final BuildContext context;
-  final Logger _logger = Logger('SmartMediaNotificationHandler');
+  final Logger _logger = Logger('SmartNotificationHandler');
 
   // Biến để kiểm soát số lần hiển thị thông báo
   bool _hasShownCameraPermissionInfo = false;
   bool _hasShownGalleryPermissionInfo = false;
   DateTime? _lastErrorNotificationTime;
 
-  SmartMediaNotificationHandler(this.context);
+  SmartNotificationHandler(this.context);
 
-  @override
   void handleNotification(
     NotificationType type,
     String message, {
@@ -50,7 +53,7 @@ class SmartMediaNotificationHandler implements MediaNotificationHandler {
     }
 
     // Kiểm tra xem đây có phải lỗi quyền không
-    if (data is MediaPermissionException) {
+    if (data is Exception && message.contains('permission')) {
       _handlePermissionError(message);
     } else {
       // Với các lỗi khác, hiển thị thông báo ngắn gọn
@@ -91,32 +94,31 @@ class SmartMediaNotificationHandler implements MediaNotificationHandler {
 
   // Hiển thị dialog hướng dẫn cấp quyền
   void _showPermissionErrorDialog(String title, String content) {
-    showDialog(
-      context: context,
-      builder:
-          (context) => AlertDialog(
-            title: Text(title),
-            content: Text(content),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context),
-                child: const Text('Đóng'),
-              ),
-              ElevatedButton(
-                onPressed: () {
-                  openAppSettings();
-                  Navigator.pop(context);
-                },
-                child: const Text('Mở Cài đặt'),
-              ),
-            ],
-          ),
-    );
+    if (context.mounted) {
+      showDialog(
+        context: context,
+        builder:
+            (context) => AlertDialog(
+              title: Text(title),
+              content: Text(content),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text('Đóng'),
+                ),
+                ElevatedButton(
+                  onPressed: () {
+                    openAppSettings();
+                    Navigator.pop(context);
+                  },
+                  child: const Text('Mở Cài đặt'),
+                ),
+              ],
+            ),
+      );
+    }
   }
 
-  @override
-  // Trong class SmartMediaNotificationHandler hoặc bất kỳ class nào đang sử dụng PermissionStatus
-  @override
   Future<bool> requestPermission(Permission permission, String message) async {
     // Kiểm tra trạng thái quyền hiện tại
     final status = await permission.status;
@@ -124,6 +126,11 @@ class SmartMediaNotificationHandler implements MediaNotificationHandler {
     // Nếu đã được cấp quyền, không cần hỏi lại
     if (status.isGranted) {
       return true;
+    }
+
+    // Kiểm tra nếu context vẫn hợp lệ (mounted)
+    if (!context.mounted) {
+      return false;
     }
 
     // Nếu đã bị từ chối vĩnh viễn, hiển thị dialog gợi ý vào Settings
@@ -153,6 +160,11 @@ class SmartMediaNotificationHandler implements MediaNotificationHandler {
                 ),
           ) ??
           false;
+    }
+
+    // Kiểm tra lại trạng thái mounted
+    if (!context.mounted) {
+      return false;
     }
 
     // Thay thế isUndetermined - kiểm tra trạng thái isDenied, lúc này là trạng thái
@@ -186,7 +198,16 @@ class SmartMediaNotificationHandler implements MediaNotificationHandler {
           ) ??
           false;
 
-      return shouldRequest;
+      if (shouldRequest && context.mounted) {
+        final result = await permission.request();
+        return result.isGranted;
+      }
+      return false;
+    }
+
+    // Kiểm tra lại trạng thái mounted
+    if (!context.mounted) {
+      return false;
     }
 
     // Các trạng thái khác (hiếm gặp: restricted, limited, etc.)
@@ -259,12 +280,186 @@ class SmartMediaNotificationHandler implements MediaNotificationHandler {
 
   // Phương thức helper để hiển thị SnackBar
   void _showSnackBar(String message, Color backgroundColor) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        backgroundColor: backgroundColor,
-        behavior: SnackBarBehavior.floating,
-        duration: const Duration(seconds: 3),
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(message),
+          backgroundColor: backgroundColor,
+          behavior: SnackBarBehavior.floating,
+          duration: const Duration(seconds: 3),
+        ),
+      );
+    }
+  }
+}
+
+// Lớp đại diện cho item được chọn từ gallery hoặc camera
+class ImageItem {
+  final File file;
+  final String? path;
+  final String? name;
+  final DateTime dateAdded;
+
+  ImageItem({required this.file, this.path, this.name, DateTime? dateAdded})
+    : dateAdded = dateAdded ?? DateTime.now();
+}
+
+// Lớp tùy chọn cho việc chọn ảnh
+class ImageOptions {
+  final ImageSource source;
+  final bool allowMultiple;
+  final int? imageQuality;
+  final double? maxWidth;
+  final double? maxHeight;
+
+  const ImageOptions({
+    required this.source,
+    this.allowMultiple = false,
+    this.imageQuality,
+    this.maxWidth,
+    this.maxHeight,
+  });
+}
+
+// Controller để quản lý việc chọn ảnh
+class ImageController {
+  final SmartNotificationHandler notificationHandler;
+  final ImagePicker _picker = ImagePicker();
+  final Logger _logger = Logger('ImageController');
+
+  ImageController({required this.notificationHandler});
+
+  static void setupLogging({Level logLevel = Level.INFO}) {
+    Logger.root.level = logLevel;
+    Logger.root.onRecord.listen((record) {
+      // Sử dụng logger thay vì print trong production
+      debugPrint('${record.level.name}: ${record.time}: ${record.message}');
+    });
+  }
+
+  Future<List<ImageItem>> pickImages(ImageOptions options) async {
+    try {
+      // Kiểm tra và yêu cầu quyền truy cập
+      bool hasPermission = false;
+
+      if (options.source == ImageSource.camera) {
+        hasPermission = await notificationHandler.requestPermission(
+          Permission.camera,
+          'Ứng dụng cần quyền truy cập Camera để chụp ảnh.',
+        );
+      } else {
+        hasPermission = await notificationHandler.requestPermission(
+          Permission.photos,
+          'Ứng dụng cần quyền truy cập Thư viện ảnh để chọn ảnh.',
+        );
+      }
+
+      if (!hasPermission) {
+        notificationHandler.handleNotification(
+          NotificationType.error,
+          'Không thể truy cập ${options.source == ImageSource.camera ? 'Camera' : 'Thư viện ảnh'}',
+          data: Exception('Permission denied'),
+        );
+        return [];
+      }
+
+      List<XFile>? pickedFiles;
+
+      if (options.source == ImageSource.camera) {
+        // Chụp ảnh từ camera
+        final XFile? photo = await _picker.pickImage(
+          source: ImageSource.camera,
+          imageQuality: options.imageQuality,
+          maxWidth: options.maxWidth,
+          maxHeight: options.maxHeight,
+        );
+
+        if (photo != null) {
+          pickedFiles = [photo];
+        }
+      } else {
+        // Chọn từ gallery
+        if (options.allowMultiple) {
+          pickedFiles = await _picker.pickMultiImage(
+            imageQuality: options.imageQuality,
+            maxWidth: options.maxWidth,
+            maxHeight: options.maxHeight,
+          );
+        } else {
+          final XFile? image = await _picker.pickImage(
+            source: ImageSource.gallery,
+            imageQuality: options.imageQuality,
+            maxWidth: options.maxWidth,
+            maxHeight: options.maxHeight,
+          );
+
+          if (image != null) {
+            pickedFiles = [image];
+          }
+        }
+      }
+
+      if (pickedFiles == null || pickedFiles.isEmpty) {
+        _logger.info('Không có ảnh nào được chọn');
+        return [];
+      }
+
+      // Chuyển đổi XFile sang ImageItem
+      List<ImageItem> result = [];
+      for (var xFile in pickedFiles) {
+        result.add(
+          ImageItem(file: File(xFile.path), path: xFile.path, name: xFile.name),
+        );
+      }
+
+      if (result.isNotEmpty) {
+        notificationHandler.handleNotification(
+          NotificationType.success,
+          'Đã chọn ${result.length} ảnh',
+        );
+      }
+
+      return result;
+    } catch (e) {
+      _logger.severe('Lỗi khi chọn ảnh: $e');
+      notificationHandler.handleNotification(
+        NotificationType.error,
+        'Đã xảy ra lỗi khi chọn ảnh: ${e.toString()}',
+        data: e,
+      );
+      return [];
+    }
+  }
+}
+
+// Widget để hiển thị preview của ảnh
+class ImagePreview extends StatelessWidget {
+  final ImageItem imageItem;
+  final BorderRadius? borderRadius;
+  final BoxFit fit;
+
+  const ImagePreview({
+    super.key,
+    required this.imageItem,
+    this.borderRadius,
+    this.fit = BoxFit.cover,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return ClipRRect(
+      borderRadius: borderRadius ?? BorderRadius.zero,
+      child: Image.file(
+        imageItem.file,
+        fit: fit,
+        errorBuilder: (context, error, stackTrace) {
+          return Container(
+            color: Colors.grey[300],
+            child: const Center(
+              child: Icon(Icons.broken_image, color: Colors.grey),
+            ),
+          );
+        },
       ),
     );
   }
@@ -278,8 +473,8 @@ class MediaScreen extends StatefulWidget {
 }
 
 class _MediaScreenState extends State<MediaScreen> {
-  late MediaController _mediaController;
-  final List<MediaItem> _selectedMedia = [];
+  late ImageController _imageController;
+  final List<ImageItem> _selectedImages = [];
   bool _isLoading = false;
 
   // Kiểm soát trạng thái các nút
@@ -290,15 +485,15 @@ class _MediaScreenState extends State<MediaScreen> {
   void initState() {
     super.initState();
     // Cấu hình logging, chỉ ghi log lỗi và warning trong production
-    MediaController.setupLogging(logLevel: Level.WARNING);
+    ImageController.setupLogging(logLevel: Level.WARNING);
   }
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
     // Khởi tạo controller với context hiện tại để có thể hiển thị UI
-    _mediaController = MediaController(
-      notificationHandler: SmartMediaNotificationHandler(context),
+    _imageController = ImageController(
+      notificationHandler: SmartNotificationHandler(context),
     );
 
     // Kiểm tra trạng thái quyền khi màn hình được tạo
@@ -310,17 +505,19 @@ class _MediaScreenState extends State<MediaScreen> {
     final cameraStatus = await Permission.camera.status;
     final storageStatus = await _getStoragePermissionStatus();
 
-    setState(() {
-      // Nếu quyền bị từ chối vĩnh viễn, disable nút tương ứng
-      _disableCameraButton = cameraStatus.isPermanentlyDenied;
-      _disableGalleryButton = storageStatus.isPermanentlyDenied;
-    });
+    if (mounted) {
+      setState(() {
+        // Nếu quyền bị từ chối vĩnh viễn, disable nút tương ứng
+        _disableCameraButton = cameraStatus.isPermanentlyDenied;
+        _disableGalleryButton = storageStatus.isPermanentlyDenied;
+      });
+    }
   }
 
   // Helper để lấy quyền storage phù hợp với phiên bản Android
   Future<PermissionStatus> _getStoragePermissionStatus() async {
     if (Theme.of(context).platform == TargetPlatform.android) {
-      // Kiểm tra phiên bản Android (có thể làm trong MediaController)
+      // Kiểm tra phiên bản Android
       return await Permission.photos.status;
     } else {
       return await Permission.photos.status;
@@ -333,10 +530,10 @@ class _MediaScreenState extends State<MediaScreen> {
       appBar: AppBar(
         title: const Text('Thư viện Media'),
         actions: [
-          if (_selectedMedia.isNotEmpty)
+          if (_selectedImages.isNotEmpty)
             IconButton(
               icon: const Icon(Icons.delete),
-              onPressed: _clearSelectedMedia,
+              onPressed: _clearSelectedImages,
               tooltip: 'Xóa tất cả',
             ),
         ],
@@ -357,7 +554,7 @@ class _MediaScreenState extends State<MediaScreen> {
               // Media grid
               Expanded(
                 child:
-                    _selectedMedia.isEmpty
+                    _selectedImages.isEmpty
                         ? _buildEmptyState()
                         : _buildMediaGrid(),
               ),
@@ -367,7 +564,7 @@ class _MediaScreenState extends State<MediaScreen> {
           // Loading indicator
           if (_isLoading)
             Container(
-              color: Colors.black.withValues(alpha: 0.3),
+              color: Colors.black.withAlpha(77), // 0.3 opacity
               child: const Center(child: CircularProgressIndicator()),
             ),
         ],
@@ -432,7 +629,7 @@ class _MediaScreenState extends State<MediaScreen> {
         crossAxisSpacing: 8,
         mainAxisSpacing: 8,
       ),
-      itemCount: _selectedMedia.length,
+      itemCount: _selectedImages.length,
       itemBuilder: (context, index) {
         return Card(
           clipBehavior: Clip.antiAlias,
@@ -442,13 +639,10 @@ class _MediaScreenState extends State<MediaScreen> {
             fit: StackFit.expand,
             children: [
               // Media preview
-              GestureDetector(
-                onTap: () => _handleMediaTap(index),
-                child: MediaPreview(
-                  mediaItem: _selectedMedia[index],
-                  borderRadius: BorderRadius.circular(0),
-                  fit: BoxFit.cover,
-                ),
+              ImagePreview(
+                imageItem: _selectedImages[index],
+                borderRadius: BorderRadius.circular(0),
+                fit: BoxFit.cover,
               ),
 
               // Delete button
@@ -457,7 +651,7 @@ class _MediaScreenState extends State<MediaScreen> {
                 right: 4,
                 child: Container(
                   decoration: BoxDecoration(
-                    color: Colors.black.withValues(alpha: 0.5),
+                    color: Colors.black.withAlpha(128), // 0.5 opacity
                     shape: BoxShape.circle,
                   ),
                   child: IconButton(
@@ -470,36 +664,9 @@ class _MediaScreenState extends State<MediaScreen> {
                     ),
                     onPressed: () {
                       setState(() {
-                        _selectedMedia.removeAt(index);
+                        _selectedImages.removeAt(index);
                       });
                     },
-                  ),
-                ),
-              ),
-
-              // Edit indicator
-              Positioned(
-                bottom: 4,
-                right: 4,
-                child: Container(
-                  decoration: BoxDecoration(
-                    color: Colors.black.withValues(alpha: 0.5),
-                    borderRadius: BorderRadius.circular(4),
-                  ),
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 6,
-                    vertical: 2,
-                  ),
-                  child: const Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(Icons.edit, size: 12, color: Colors.white),
-                      SizedBox(width: 2),
-                      Text(
-                        'Sửa',
-                        style: TextStyle(color: Colors.white, fontSize: 10),
-                      ),
-                    ],
                   ),
                 ),
               ),
@@ -516,17 +683,17 @@ class _MediaScreenState extends State<MediaScreen> {
         _isLoading = true;
       });
 
-      final media = await _mediaController.pickMedia(
-        const MediaOptions(
-          source: MediaSource.gallery,
+      final images = await _imageController.pickImages(
+        ImageOptions(
+          source: ImageSource.gallery,
           allowMultiple: true,
           imageQuality: 80,
         ),
       );
 
-      if (media.isNotEmpty && mounted) {
+      if (images.isNotEmpty && mounted) {
         setState(() {
-          _selectedMedia.addAll(media);
+          _selectedImages.addAll(images);
         });
       }
     } catch (e) {
@@ -549,25 +716,13 @@ class _MediaScreenState extends State<MediaScreen> {
         _isLoading = true;
       });
 
-      final media = await _mediaController.pickMedia(
-        MediaOptions(
-          source: MediaSource.camera,
-          imageQuality: 90,
-          cropOptions: const CropOptions(
-            aspectRatio: CropAspectRatio.square,
-            uiOptions: CropUIOptions(
-              toolbarTitle: 'Chỉnh sửa ảnh',
-              showCropGrid: true,
-              hideBottomControls: false,
-              cropFrameColor: Colors.white,
-            ),
-          ),
-        ),
+      final images = await _imageController.pickImages(
+        ImageOptions(source: ImageSource.camera, imageQuality: 90),
       );
 
-      if (media.isNotEmpty && mounted) {
+      if (images.isNotEmpty && mounted) {
         setState(() {
-          _selectedMedia.addAll(media);
+          _selectedImages.addAll(images);
         });
       }
     } catch (e) {
@@ -597,42 +752,7 @@ class _MediaScreenState extends State<MediaScreen> {
     }
   }
 
-  Future<void> _handleMediaTap(int index) async {
-    try {
-      setState(() {
-        _isLoading = true;
-      });
-
-      final croppedImage = await _mediaController.cropImage(
-        _selectedMedia[index],
-        const CropOptions(
-          aspectRatio: CropAspectRatio.square,
-          uiOptions: CropUIOptions(
-            toolbarTitle: 'Chỉnh sửa ảnh',
-            showCropGrid: true,
-            hideBottomControls: false,
-            cropFrameColor: Colors.white,
-          ),
-        ),
-      );
-
-      if (croppedImage != null && mounted) {
-        setState(() {
-          _selectedMedia[index] = croppedImage;
-        });
-      }
-    } catch (e) {
-      // Không cần xử lý lỗi ở đây vì NotificationHandler đã xử lý
-    } finally {
-      if (mounted) {
-        setState(() {
-          _isLoading = false;
-        });
-      }
-    }
-  }
-
-  void _clearSelectedMedia() {
+  void _clearSelectedImages() {
     showDialog(
       context: context,
       builder:
@@ -647,7 +767,7 @@ class _MediaScreenState extends State<MediaScreen> {
               ElevatedButton(
                 onPressed: () {
                   setState(() {
-                    _selectedMedia.clear();
+                    _selectedImages.clear();
                   });
                   Navigator.pop(context);
                 },

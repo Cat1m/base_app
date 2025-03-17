@@ -197,11 +197,15 @@ flutter pub global activate rename
 # 4. Tạo và chạy script đổi tên dự án
 python rename_project.py food_app
 
-# 5. Hoàn tất thiết lập
+# 5. Cài đặt và chạy flutter_rust_bridge_codegen
+cargo install flutter_rust_bridge_codegen
+flutter_rust_bridge_codegen generate
+
+# 6. Hoàn tất thiết lập
 flutter clean
 flutter pub get
 # (Nếu phát triển cho iOS)
 cd ios && pod install && cd ..
 
-# 6. Chạy ứng dụng để kiểm tra
+# 7. Chạy ứng dụng để kiểm tra
 flutter run

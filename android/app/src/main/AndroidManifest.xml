@@ -11,7 +11,8 @@
     <application
         android:label="base_app"
         android:name="${applicationName}"
-        android:icon="@mipmap/ic_launcher">
+        android:icon="@mipmap/ic_launcher"
+        android:largeHeap="true">
         <activity
             android:name=".MainActivity"
             android:exported="true"
@@ -35,11 +36,18 @@
             </intent-filter>
         </activity>
         <!-- Don't delete the meta-data below.
-             This is used by the Flutter tool to generate GeneratedPluginRegistrant.java -->
+            This is used by the Flutter tool to generate GeneratedPluginRegistrant.java -->
+
+        <!-- Thêm dòng này để tắt Impeller -->
+
         <activity
             android:name="com.yalantis.ucrop.UCropActivity"
             android:screenOrientation="portrait"
             android:theme="@style/Ucrop.CropTheme"/>
+
+        <meta-data
+        android:name="io.flutter.embedding.android.EnableImpeller"
+        android:value="false" />
 
         <meta-data
             android:name="flutterEmbedding"
