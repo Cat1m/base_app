@@ -1,6 +1,8 @@
 import 'package:base_app/src/features/home/screens/caro_game_screen.dart';
+import 'package:base_app/src/features/home/screens/theme_screen.dart';
 import 'package:base_app/src/features/media/screens/media_screen.dart';
 import 'package:base_app/src/features/performance/screens/performance_screen.dart';
+import 'package:base_app/src/features/theme/app_theme.dart';
 import 'package:flutter/material.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -13,205 +15,245 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   @override
   Widget build(BuildContext context) {
+    final textTheme = Theme.of(context).textTheme;
+
     return Scaffold(
-      appBar: AppBar(title: const Text('Rust Performance Demo')),
+      appBar: AppBar(
+        title: const Text('Flutter Application'),
+        backgroundColor: AppColors.primary,
+        foregroundColor: Colors.white,
+        elevation: 0,
+      ),
       body: SingleChildScrollView(
-        child: Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              // Header Section
-              const SizedBox(height: 16),
-              Center(
-                child: Column(
-                  children: [
-                    Icon(Icons.bolt, size: 60, color: Colors.deepPurple),
-                    const SizedBox(height: 16),
-                    Text(
-                      'Flutter + Rust',
-                      style: Theme.of(
-                        context,
-                      ).textTheme.headlineMedium?.copyWith(
-                        fontWeight: FontWeight.bold,
-                        color: Colors.deepPurple,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      'High Performance Native Apps',
-                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        color: Colors.grey[600],
-                      ),
-                    ),
-                  ],
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            // Hero section with a gradient background
+            Container(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [AppColors.primary, AppColors.primaryLight],
                 ),
               ),
-              const SizedBox(height: 32),
-
-              // Features Section
-              Text(
-                'Features',
-                style: Theme.of(
-                  context,
-                ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
-              ),
-              const SizedBox(height: 16),
-
-              // Performance Test Feature
-              _buildFeatureButton(
-                icon: Icons.speed,
-                label: 'Performance Benchmarks',
-                description:
-                    'Compare Rust vs Dart performance on complex tasks',
-                color: Colors.deepPurple,
-                onPressed: () {
-                  Navigator.of(context).push(
-                    MaterialPageRoute(
-                      builder: (context) => const PerformanceScreen(),
+              padding: const EdgeInsets.fromLTRB(24, 32, 24, 48),
+              child: Column(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.2),
+                      shape: BoxShape.circle,
                     ),
-                  );
-                },
-              ),
-
-              const SizedBox(height: 16),
-
-              // THÊM MỚI - Game Caro Feature
-              _buildFeatureButton(
-                icon: Icons.games,
-                label: 'Game Caro',
-                description: 'Chơi cờ caro với bàn 15x15 ô',
-                color: Colors.purple,
-                onPressed: () {
-                  Navigator.of(context).push(
-                    MaterialPageRoute(
-                      builder: (context) => const CaroGameScreen(),
+                    child: const Icon(
+                      Icons.bolt,
+                      size: 48,
+                      color: Colors.white,
                     ),
-                  );
-                },
-              ),
-
-              const SizedBox(height: 16),
-
-              // Media Gallery Feature
-              _buildFeatureButton(
-                icon: Icons.photo_library,
-                label: 'Media Gallery',
-                description: 'Camera and image gallery with editing features',
-                color: Colors.blue,
-                onPressed: () {
-                  Navigator.of(context).push(
-                    MaterialPageRoute(
-                      builder: (context) => const MediaScreen(),
+                  ),
+                  const SizedBox(height: 24),
+                  Text(
+                    'Flutter + Rust',
+                    style: textTheme.headlineLarge?.copyWith(
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
                     ),
-                  );
-                },
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'High Performance Native Apps',
+                    style: textTheme.titleMedium?.copyWith(
+                      color: Colors.white.withValues(alpha: 0.9),
+                    ),
+                  ),
+                ],
               ),
+            ),
 
-              const SizedBox(height: 16),
+            // Features section
+            Padding(
+              padding: const EdgeInsets.all(24.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Features',
+                    style: textTheme.titleLarge?.copyWith(
+                      fontWeight: FontWeight.bold,
+                      color: AppColors.textPrimary,
+                    ),
+                  ),
+                  const SizedBox(height: 24),
 
-              // Matrix Calculator Feature
-              _buildFeatureButton(
-                icon: Icons.calculate,
-                label: 'Matrix Calculator',
-                description: 'Fast matrix operations powered by Rust',
-                color: Colors.orange,
-                onPressed: () {
-                  _showComingSoonDialog('Matrix Calculator');
-                },
+                  // Features grid
+                  GridView.count(
+                    crossAxisCount: 2,
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    mainAxisSpacing: 16,
+                    crossAxisSpacing: 16,
+                    childAspectRatio: 0.85,
+                    children: [
+                      _buildFeatureCard(
+                        context: context,
+                        icon: Icons.speed,
+                        label: 'Performance',
+                        onTap: () {
+                          Navigator.of(context).push(
+                            MaterialPageRoute(
+                              builder: (context) => const PerformanceScreen(),
+                            ),
+                          );
+                        },
+                      ),
+                      _buildFeatureCard(
+                        context: context,
+                        icon: Icons.games,
+                        label: 'Caro Game',
+                        onTap: () {
+                          Navigator.of(context).push(
+                            MaterialPageRoute(
+                              builder: (context) => const CaroGameScreen(),
+                            ),
+                          );
+                        },
+                      ),
+                      _buildFeatureCard(
+                        context: context,
+                        icon: Icons.photo_library,
+                        label: 'Media Gallery',
+                        onTap: () {
+                          Navigator.of(context).push(
+                            MaterialPageRoute(
+                              builder: (context) => const MediaScreen(),
+                            ),
+                          );
+                        },
+                      ),
+                      _buildFeatureCard(
+                        context: context,
+                        icon: Icons.theater_comedy,
+                        label: 'Theme',
+                        onTap: () {
+                          Navigator.of(context).push(
+                            MaterialPageRoute(
+                              builder: (context) => const ThemeScreen(),
+                            ),
+                          );
+                        },
+                      ),
+                      _buildFeatureCard(
+                        context: context,
+                        icon: Icons.calculate,
+                        label: 'Matrix Calculator',
+                        onTap: () {
+                          _showComingSoonDialog('Matrix Calculator');
+                        },
+                      ),
+                      _buildFeatureCard(
+                        context: context,
+                        icon: Icons.lock,
+                        label: 'Crypto',
+                        onTap: () {
+                          _showComingSoonDialog('Crypto Operations');
+                        },
+                      ),
+                      _buildFeatureCard(
+                        context: context,
+                        icon: Icons.image,
+                        label: 'Image Processing',
+                        onTap: () {
+                          _showComingSoonDialog('Image Processing');
+                        },
+                      ),
+                      _buildFeatureCard(
+                        context: context,
+                        icon: Icons.add,
+                        label: 'More Coming',
+                        onTap: () {
+                          _showComingSoonDialog('Additional Features');
+                        },
+                      ),
+                    ],
+                  ),
+                ],
               ),
+            ),
 
-              const SizedBox(height: 16),
-
-              // Crypto Operations Feature
-              _buildFeatureButton(
-                icon: Icons.lock,
-                label: 'Crypto Operations',
-                description:
-                    'Secure cryptographic functions with native performance',
-                color: Colors.green,
-                onPressed: () {
-                  _showComingSoonDialog('Crypto Operations');
-                },
+            // Footer
+            Container(
+              padding: const EdgeInsets.symmetric(vertical: 24),
+              color: AppColors.surface,
+              child: Column(
+                children: [
+                  Text(
+                    'Powered by Flutter Rust Bridge',
+                    style: TextStyle(
+                      color: AppColors.textSecondary,
+                      fontSize: 14,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'v1.0.0',
+                    style: TextStyle(
+                      color: AppColors.textDisabled,
+                      fontSize: 12,
+                    ),
+                  ),
+                ],
               ),
-
-              const SizedBox(height: 16),
-
-              // Image Processing Feature
-              _buildFeatureButton(
-                icon: Icons.image,
-                label: 'Image Processing',
-                description:
-                    'High-performance image filters and transformations',
-                color: Colors.red,
-                onPressed: () {
-                  _showComingSoonDialog('Image Processing');
-                },
-              ),
-
-              const SizedBox(height: 32),
-
-              // Footer
-              Center(
-                child: Text(
-                  'Powered by Flutter Rust Bridge',
-                  style: TextStyle(color: Colors.grey[600], fontSize: 14),
-                ),
-              ),
-              const SizedBox(height: 16),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );
   }
 
-  Widget _buildFeatureButton({
+  Widget _buildFeatureCard({
+    required BuildContext context,
     required IconData icon,
     required String label,
-    required String description,
-    required Color color,
-    required VoidCallback onPressed,
+    required VoidCallback onTap,
   }) {
-    return FilledButton(
-      onPressed: onPressed,
-      style: FilledButton.styleFrom(
-        backgroundColor: color,
-        foregroundColor: Colors.white,
-        padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 20),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+    return Card(
+      elevation: 0,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+        side: BorderSide(
+          color: AppColors.primary.withValues(alpha: 0.1),
+          width: 1,
+        ),
       ),
-      child: Row(
-        children: [
-          CircleAvatar(
-            backgroundColor: Colors.white.withValues(alpha: 0.3),
-            child: Icon(icon, color: Colors.white),
-          ),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  label,
-                  style: const TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                  ),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(16),
+        child: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Container(
+                width: 64,
+                height: 64,
+                decoration: BoxDecoration(
+                  color: AppColors.primary.withValues(alpha: 0.1),
+                  shape: BoxShape.circle,
                 ),
-                const SizedBox(height: 4),
-                Text(
-                  description,
-                  style: TextStyle(
-                    fontSize: 14,
-                    color: Colors.white.withValues(alpha: 0.9),
-                  ),
-                ),
-              ],
-            ),
+                child: Icon(icon, color: AppColors.primary, size: 32),
+              ),
+              const SizedBox(height: 16),
+              Text(
+                label,
+                style: Theme.of(
+                  context,
+                ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600),
+                textAlign: TextAlign.center,
+              ),
+            ],
           ),
-          const Icon(Icons.arrow_forward_ios, size: 16),
-        ],
+        ),
       ),
     );
   }
@@ -226,7 +268,7 @@ class _HomeScreenState extends State<HomeScreen> {
               'The $featureName feature is under development and will be available in a future update.',
             ),
             actions: [
-              TextButton(
+              FilledButton(
                 onPressed: () => Navigator.of(context).pop(),
                 child: const Text('OK'),
               ),
