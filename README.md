@@ -191,17 +191,20 @@ git clone https://github.com/Cat1m/base_app.git food_app
 # 2. Di chuyển vào thư mục dự án mới
 cd food_app
 
-# 3. Cài đặt và active package rename
+# 3. Xóa .git
+Remove-Item -Path .git -Recurse -Force
+
+# 4. Cài đặt và active package rename
 flutter pub global activate rename
 
-# 4. Tạo và chạy script đổi tên dự án
+# 5. Tạo và chạy script đổi tên dự án
 python rename_project.py food_app
 
-# 5. Cài đặt và chạy flutter_rust_bridge_codegen
+# 6. Cài đặt và chạy flutter_rust_bridge_codegen
 cargo install flutter_rust_bridge_codegen
 flutter_rust_bridge_codegen generate
 
-# 6. Hoàn tất thiết lập
+# 7. Hoàn tất thiết lập
 flutter clean
 flutter pub get
 # (Nếu phát triển cho iOS)
